@@ -18,30 +18,35 @@ import java.io.FileWriter
 import java.io.IOException
 import java.net.URL
 import androidx.appcompat.app.AppCompatActivity
-
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
+import java.net.URLDecoder
 
 class MainActivity : AppCompatActivity(){
     lateinit var button: MaterialButton
     lateinit var progressBar: ProgressBar
+    lateinit var input: TextInputLayout
     var img: Bitmap? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         initViews()
-        //doInBackground("https://static2.mangapoisk.ru/pages/4/407588/OaBFqRzwU1MiLMf1Uzoeu1sYciC66J2Pk4gJ6LFd.jpg")
+        val manga:Manga = Manga("https://mangapoisk.ru/manga/vanpanchmen/chapter/32-219")
+        PDFDocumentManga.createMangaPdf(manga,"MyMangaCollect")
+        progressBar.visibility = View.GONE
     }
 
-    fun initViews() {
+    fun initViews(){
+        input = findViewById(R.id.input)
         progressBar= findViewById(R.id.progressbar)
         button= findViewById(R.id.button)
         button.setOnClickListener {
             progressBar.visibility= View.VISIBLE
-            document_creator("https://mangapoisk.ru/manga/vanpanchmen/chapter/32-219")
         }
     }
     suspend fun name_of_title(url: String):String{
        var src: String? = null
-        return CoroutineScope(Dispatchers.IO).async {
+       return CoroutineScope(Dispatchers.IO).async {
                 val doc =
                     Jsoup.connect(url)
                         .userAgent("Chrome")
@@ -55,42 +60,6 @@ class MainActivity : AppCompatActivity(){
             documentcreator(url)
         }
     }
-    fun connection_and_get_img() {
-        var src: String? = null
-        CoroutineScope(Dispatchers.IO).launch {
-            val doc =
-                Jsoup.connect("https://mangapoisk.ru/manga/vanpanchmen/chapter/30-290.2")
-                    .userAgent("Chrome")
-                    .get()
-            val elem = doc.select("#page-1")
-            val elems = doc.select("img.img-fluid.page-image.lazy.lazy-preload")
-            withContext(Dispatchers.Main) {
-                src = elem.attr("src")
-                val count = elems.size + 1
-                elems.forEach {
-                    doInBackground(it.attr("data-src"))
-                }
-                return@withContext
-            }
-        }
-    }
-
-    fun doInBackground(urls: String?) {
-        var mIcon11: Bitmap? = null
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val `in` = URL(urls).openStream()
-                mIcon11 = BitmapFactory.decodeStream(`in`)
-            } catch (e: Exception) {
-                Log.d("MainActivity", "FF")
-                e.printStackTrace()
-            }
-            withContext(Dispatchers.Main) {
-                pdfcreator(mIcon11)
-            }
-        }
-    }
-
     suspend fun documentcreator(url: String) {
         val number= number_of_pages(url)
         val name = name_of_title(url)
@@ -99,12 +68,11 @@ class MainActivity : AppCompatActivity(){
         if (!directory.exists()) {
             directory.mkdirs();
         }
+
         val root = File(directory, "$name.pdf")
         try {
             val a = root.createNewFile()
-            Log.d("MainActivity", a.toString())
         } catch (e: IOException) {
-            Log.d("MainActivity", "F")
             e.printStackTrace()
         }
         val pageInfo = PdfDocument.PageInfo.Builder(100, 150, 1).create()
@@ -177,47 +145,5 @@ class MainActivity : AppCompatActivity(){
             elems.size
             return@async elems.size
         }.await()
-    }
-
-    fun pdfcreator(img: Bitmap?) {
-        val directory = File(Environment.getExternalStorageDirectory().path, "MyMangaCollection")
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
-        val root = File(directory, "Onepuncjj.pdf")
-        val x = -20
-        val y = -5
-        val a = x.toFloat()
-        val b = y.toFloat()
-        val paint = Paint()
-        try {
-            val a = root.createNewFile()
-            Log.d("MainActivity", a.toString())
-        } catch (e: IOException) {
-            Log.d("MainActivity", "F")
-            e.printStackTrace()
-        }
-        var document = PdfDocument();
-
-        val pageInfo = PdfDocument.PageInfo.Builder(100, 150, 1).create();
-
-        val page = document.startPage(pageInfo);
-        img?.let {
-            page.canvas.drawBitmap(it, null, Rect(0, 0, 100, 150), null)
-        }
-        // draw something on the page
-
-        // finish the page
-        document.finishPage(page);
-        // write the document content
-
-        try {
-            document.writeTo(root.outputStream());
-        } catch (e: IOException) {
-            Log.d("MainActivity", "FF")
-            e.printStackTrace()
-        }
-        // close the document
-        document.close();
     }
 }
